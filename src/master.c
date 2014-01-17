@@ -22,6 +22,9 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 #include "worker.h"
 #include "dfs.h"
 
+// Scheduler timings
+#include <sys/time.h>
+
 XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
 
 static FILE*       tasks_log;
@@ -226,6 +229,9 @@ static void set_speculative_tasks (msg_host_t worker)
 
 static void send_scheduler_task (enum phase_e phase, size_t wid)
 {
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
+
     size_t tid = user.scheduler_f (phase, wid);
 
     if (tid == NONE)
@@ -248,6 +254,12 @@ static void send_scheduler_task (enum phase_e phase, size_t wid)
     XBT_INFO ("%s %zu assigned to %s %s", (phase==MAP?"map":"reduce"), tid,
 	    MSG_host_get_name (config.workers[wid]),
 	    task_type_string (task_type));
+
+    gettimeofday(&end, NULL);
+    long micro = 1000000*(end.tv_sec - start.tv_sec) + end.tv_usec - start.tv_usec;
+    XBT_INFO("SchedTime %s %zu %ld microsec.", (phase==MAP?"map":"reduce"), tid, micro);
+    msg_task_t schedTask = MSG_task_create("schedTime", (double)(3258*micro), 0, NULL);
+    MSG_task_execute (schedTask);
 
     send_task (phase, tid, sid, wid);
 

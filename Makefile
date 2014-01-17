@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -g3
+CFLAGS = -Wall -O3
 
 INSTALL_PATH = $$HOME/simgrid
 INCLUDES = -Iinclude -I$(INSTALL_PATH)/include
