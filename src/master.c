@@ -26,6 +26,7 @@ along with MRSG.  If not, see <http://www.gnu.org/licenses/>. */
 #include <sys/time.h>
 
 XBT_LOG_EXTERNAL_DEFAULT_CATEGORY (msg_test);
+XBT_LOG_NEW_CATEGORY (Sched, "Scheduling");
 
 static FILE*       tasks_log;
 
@@ -61,6 +62,7 @@ int master (int argc, char* argv[])
     {
 	msg = NULL;
 	status = receive (&msg, MASTER_MAILBOX);
+
 	if (status == MSG_OK)
 	{
 	    worker = MSG_task_get_source (msg);
@@ -230,6 +232,7 @@ static void set_speculative_tasks (msg_host_t worker)
 static void send_scheduler_task (enum phase_e phase, size_t wid)
 {
     struct timeval start, end;
+    long microsec;
     gettimeofday(&start, NULL);
 
     size_t tid = user.scheduler_f (phase, wid);
@@ -251,19 +254,17 @@ static void send_scheduler_task (enum phase_e phase, size_t wid)
 	sid = find_random_chunk_owner (tid);
     }
 
+    update_stats (task_type);
+
+    gettimeofday(&end, NULL);
+    microsec = 1000000*(end.tv_sec - start.tv_sec) + end.tv_usec - start.tv_usec;
+    XBT_CINFO(Sched, "%s %zu %ld microsec", (phase==MAP?"map":"reduce"), tid, microsec);
+
     XBT_INFO ("%s %zu assigned to %s %s", (phase==MAP?"map":"reduce"), tid,
 	    MSG_host_get_name (config.workers[wid]),
 	    task_type_string (task_type));
 
-    gettimeofday(&end, NULL);
-    long micro = 1000000*(end.tv_sec - start.tv_sec) + end.tv_usec - start.tv_usec;
-    XBT_INFO("SchedTime %s %zu %ld microsec.", (phase==MAP?"map":"reduce"), tid, micro);
-    msg_task_t schedTask = MSG_task_create("schedTime", (double)(3258*micro), 0, NULL);
-    MSG_task_execute (schedTask);
-
     send_task (phase, tid, sid, wid);
-
-    update_stats (task_type);
 }
 
 enum task_type_e get_task_type (enum phase_e phase, size_t tid, size_t wid)
